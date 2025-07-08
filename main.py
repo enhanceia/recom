@@ -1003,7 +1003,83 @@ from difflib import SequenceMatcher
 
 warnings.filterwarnings('ignore')
 
+# =====================================================
+# DEMANDA HISTÓRICA Y MATCHING EXACTO
+# =====================================================
+
+def proyectar_demanda_exacta(
+    df_ventas,
+    col_categoria="Categoria",
+    col_talla="talla",
+    col_color="color",
+    col_unidades="unidades",
+):
+    """Calcula la demanda agregada por categoría, talla y color.
+
+    Agrupa ``df_ventas`` por las columnas indicadas y suma el número de
+    unidades vendidas. Devuelve un DataFrame con las columnas
+    ``categoria``, ``talla``, ``color`` y ``demanda_total``.
+    """
+    if df_ventas is None or len(df_ventas) == 0:
+        return pd.DataFrame(
+            columns=["categoria", "talla", "color", "demanda_total"]
+        )
+
+    demanda = (
+        df_ventas.groupby([col_categoria, col_talla, col_color])[col_unidades]
+        .sum()
+        .reset_index()
+    )
+    demanda.columns = ["categoria", "talla", "color", "demanda_total"]
+    return demanda
+
+
+def buscar_skus_coincidentes(
+    demanda_df,
+    catalogo_proveedor,
+    col_categoria="Categoria",
+    col_talla="talla",
+    col_color="color",
+    col_sku="SKU_Proveedor",
+):
+    """Encuentra SKUs del proveedor que coinciden exactamente con la demanda.
+
+    ``demanda_df`` debe contener las columnas ``categoria``, ``talla`` y
+    ``color`` generadas por :func:`proyectar_demanda_exacta`.
+    El catálogo del proveedor se filtra usando coincidencias exactas de estos
+    tres atributos. Se devuelve ``demanda_df`` con una columna adicional
+    ``skus_coincidentes`` con la lista de SKUs encontrados para cada fila.
+    """
+
+    if demanda_df is None or len(demanda_df) == 0:
+        return demanda_df
+
+    resultados = []
+    for _, row in demanda_df.iterrows():
+        mask = (
+            catalogo_proveedor[col_categoria].astype(str).str.upper()
+            == str(row["categoria"]).upper()
+        ) & (
+            catalogo_proveedor[col_talla].astype(str).str.upper()
+            == str(row["talla"]).upper()
+        ) & (
+            catalogo_proveedor[col_color].astype(str).str.upper()
+            == str(row["color"]).upper()
+        )
+        skus = (
+            catalogo_proveedor.loc[mask, col_sku]
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+        resultados.append({**row, "skus_coincidentes": skus})
+
+    return pd.DataFrame(resultados)
+
+# =====================================================
 # Configuración de la página
+# =====================================================
 st.set_page_config(
     page_title="🛒 Sistema de Recomendaciones de Compra IA",
     page_icon="🛒",
