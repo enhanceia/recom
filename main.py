@@ -193,6 +193,44 @@ def son_tallas_similares(talla1, talla2):
     except:
         return False
 
+def normalizar_talla(talla):
+    """Convierte tallas numéricas a su equivalente alfabético.
+
+    Por ejemplo, ``"23"`` se transforma en ``"XXS"`` y ``"28"`` en ``"M"``.
+    Si la talla ya está en formato de letras, se devuelve sin cambios."""
+    if pd.isna(talla):
+        return None
+
+    t = str(talla).strip().upper()
+
+    # Si ya es una talla alfabética conocida, retornar tal cual
+    if t in [
+        "XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL"
+    ]:
+        return t
+
+    try:
+        n = int(float(t))
+    except Exception:
+        return t
+
+    if n <= 23:
+        return "XXS"
+    elif n <= 25:
+        return "XS"
+    elif n <= 27:
+        return "S"
+    elif n <= 29:
+        return "M"
+    elif n <= 31:
+        return "L"
+    elif n <= 33:
+        return "XL"
+    elif n <= 35:
+        return "XXL"
+    else:
+        return "XXXL"
+
 def calcular_score_similitud_mejorado_final(demanda, producto, config):
     """Version FINAL del algoritmo de similitud - Soluciona problemas de comas y tallas"""
     score = 0
@@ -224,11 +262,14 @@ def calcular_score_similitud_mejorado_final(demanda, producto, config):
         # Si se ignoran las tallas, dar puntos completos
         score += 15
     else:
-        # Aplicar lógica de tallas normal
-        if demanda.get('talla') and 'talla' in producto and pd.notna(producto['talla']):
-            if son_tallas_iguales(demanda['talla'], producto['talla']):
+        # Usar tallas normalizadas para una comparación más robusta
+        talla_demanda = demanda.get('talla_normalizada', demanda.get('talla'))
+        talla_producto = producto.get('talla_normalizada', producto.get('talla'))
+
+        if talla_demanda and talla_producto and pd.notna(talla_producto):
+            if son_tallas_iguales(talla_demanda, talla_producto):
                 score += 15
-            elif config['incluir_similares'] and son_tallas_similares(demanda['talla'], producto['talla']):
+            elif config['incluir_similares'] and son_tallas_similares(talla_demanda, talla_producto):
                 score += 10
         else:
             # Si no hay datos de talla, dar puntos parciales
@@ -1157,7 +1198,13 @@ def limpiar_datos(df):
         extraidos = df['Parte'].apply(extraer_color_talla_sku)
         df['talla'] = extraidos.apply(lambda d: d.get('talla'))
         df['color'] = extraidos.apply(lambda d: d.get('color'))
-    
+
+    # Crear columna de talla normalizada para comparaciones consistentes
+    if 'talla' in df.columns:
+        df['talla_normalizada'] = df['talla'].apply(normalizar_talla)
+    else:
+        df['talla_normalizada'] = None
+
     return df
 
 def limpiar_categoria(categoria):
@@ -2095,7 +2142,13 @@ def procesar_datos_proveedor(df, col_sku, col_precio, col_categoria,
                 df_procesado['color'] = df_procesado['Color_Proveedor'].fillna(
                     extraidos.apply(lambda d: d.get('color'))
                 )
-        
+
+        # Normalizar tallas para comparación
+        if 'talla' in df_procesado.columns:
+            df_procesado['talla_normalizada'] = df_procesado['talla'].apply(normalizar_talla)
+        else:
+            df_procesado['talla_normalizada'] = None
+
         # Filtrar productos válidos (solo SKU es obligatorio)
         df_procesado = df_procesado.dropna(subset=['SKU_Proveedor'])
         df_procesado = df_procesado[df_procesado['SKU_Proveedor'].astype(str).str.strip() != '']
