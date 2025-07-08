@@ -988,7 +988,9 @@ if __name__ == "__main__":
         st.info("💡 Instala con: pip install streamlit pandas plotly prophet openpyxl")
     except Exception as e:
         st.error(f"❌ Error inesperado: {str(e)}")
-        st.info("🔄 Recarga la página para reiniciar")import streamlit as st
+        st.info("🔄 Recarga la página para reiniciar")
+
+import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
