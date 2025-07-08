@@ -2265,5 +2265,20 @@ def mostrar_paso_4_seleccion_manual():
             
             if opciones_disponibles is not None and len(opciones_disponibles) > 0:
                 st.session_state['opciones_disponibles'] = opciones_disponibles
-                st.session_state['config_matching'] = config_matching  # Guardar config
-                st.success(f"✅
+                st.session_state['config_matching'] = config_matching  # Guardar config                st.success(
+                    f"✅ {len(opciones_disponibles)} opciones encontradas con algoritmo mejorado"
+                )
+
+                # Mostrar estadísticas de matching
+                mostrar_estadisticas_matching(opciones_disponibles)
+
+                # Mostrar interfaz de selección
+                mostrar_interfaz_seleccion_manual(opciones_disponibles, distribucion)
+            else:
+                st.error("❌ No se encontraron opciones compatibles")
+                mostrar_debugging_opciones_mejorado(distribucion, df_proveedor, config_matching)
+
+    # Si ya hay opciones disponibles, mostrar la interfaz
+    if 'opciones_disponibles' in st.session_state:
+        opciones = st.session_state['opciones_disponibles']
+        mostrar_interfaz_seleccion_manual(opciones, distribucion)
